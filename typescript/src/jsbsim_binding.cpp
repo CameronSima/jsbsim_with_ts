@@ -324,7 +324,7 @@ public:
         lin_->WriteScicoslab();
     }
 
-    void writeScicoslabWithPath(const std::string& path) const {
+    void writeScicoslabWithPath(std::string path) const {
         lin_->WriteScicoslab(path);
     }
 
@@ -402,11 +402,8 @@ private:
 class JSBSimFDMExec : public JSBSimJSBBase {
 public:
     JSBSimFDMExec(const std::string& root_dir = "") {
-        if (root_dir.empty()) {
-            fdm_ = std::make_shared<FGFDMExec>();
-        } else {
-            fdm_ = std::make_shared<FGFDMExec>(root_dir);
-        }
+        fdm_ = std::make_shared<FGFDMExec>();
+        // Skip root directory setup for now due to missing SimGear dependencies
     }
 
     bool run() {

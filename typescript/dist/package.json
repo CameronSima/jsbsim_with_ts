@@ -1,0 +1,15 @@
+{
+  "name": "jsbsim-js",
+  "version": "1.0.0",
+  "description": "JavaScript/TypeScript bindings for JSBSim flight dynamics model",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "browser": "jsbsim.bundle.js",
+  "files": [
+    "*"
+  ],
+  "dependencies": {},
+  "peerDependencies": {
+    "emscripten": "^3.1.0"
+  }
+}

@@ -1,468 +1,547 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>JSBSim Browser Example</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .container {
-            background: #f5f5f5;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 10px 0;
-        }
-        .status {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-        }
-        .status.loading {
-            background: #fff3cd;
-            color: #856404;
-        }
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-        }
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        .controls {
-            margin: 20px 0;
-        }
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        button:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-        }
-        button:hover:not(:disabled) {
-            background: #0056b3;
-        }
-        .data-display {
-            background: white;
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 4px;
-            font-family: monospace;
-            white-space: pre-line;
-        }
-        .property-input {
-            margin: 10px 0;
-        }
-        .property-input input, .property-input select {
-            margin: 0 5px;
-            padding: 5px;
-        }
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .container {
+        background: #f5f5f5;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 10px 0;
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+      }
+      .status.loading {
+        background: #fff3cd;
+        color: #856404;
+      }
+      .status.success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status.error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .controls {
+        margin: 20px 0;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 5px;
+      }
+      button:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+      }
+      button:hover:not(:disabled) {
+        background: #0056b3;
+      }
+      .data-display {
+        background: white;
+        border: 1px solid #ddd;
+        padding: 15px;
+        border-radius: 4px;
+        font-family: monospace;
+        white-space: pre-line;
+      }
+      .property-input {
+        margin: 10px 0;
+      }
+      .property-input input,
+      .property-input select {
+        margin: 0 5px;
+        padding: 5px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h1>JSBSim Browser Example</h1>
 
     <div class="container">
-        <h2>Flight Dynamics Simulation in Your Browser</h2>
-        <p>This example demonstrates JSBSim running in WebAssembly within a web browser.</p>
+      <h2>Flight Dynamics Simulation in Your Browser</h2>
+      <p>
+        This example demonstrates JSBSim running in WebAssembly within a web
+        browser.
+      </p>
 
-        <div id="status" class="status loading">
-            Initializing JSBSim...
-        </div>
+      <div id="status" class="status loading">Initializing JSBSim...</div>
 
-        <div class="controls">
-            <button id="initBtn" onclick="initializeJSBSim()" disabled>Initialize JSBSim</button>
-            <button id="loadAircraftBtn" onclick="loadAircraft()" disabled>Load Aircraft</button>
-            <button id="runSimBtn" onclick="runSimulation()" disabled>Run Simulation</button>
-            <button id="stepBtn" onclick="stepSimulation()" disabled>Single Step</button>
-            <button id="resetBtn" onclick="resetSimulation()" disabled>Reset</button>
-        </div>
+      <div class="controls">
+        <button id="initBtn" onclick="initializeJSBSim()" disabled>
+          Initialize JSBSim
+        </button>
+        <button id="loadAircraftBtn" onclick="loadAircraft()" disabled>
+          Load Aircraft
+        </button>
+        <button id="runSimBtn" onclick="runSimulation()" disabled>
+          Run Simulation
+        </button>
+        <button id="stepBtn" onclick="stepSimulation()" disabled>
+          Single Step
+        </button>
+        <button id="resetBtn" onclick="resetSimulation()" disabled>
+          Reset
+        </button>
+      </div>
 
-        <div class="property-input">
-            <label>Flight Controls:</label>
-            <div>
-                Elevator: <input type="range" id="elevatorSlider" min="-1" max="1" step="0.1" value="0" onchange="setElevator()">
-                <span id="elevatorValue">0.0</span>
-            </div>
-            <div>
-                Aileron: <input type="range" id="aileronSlider" min="-1" max="1" step="0.1" value="0" onchange="setAileron()">
-                <span id="aileronValue">0.0</span>
-            </div>
-            <div>
-                Rudder: <input type="range" id="rudderSlider" min="-1" max="1" step="0.1" value="0" onchange="setRudder()">
-                <span id="rudderValue">0.0</span>
-            </div>
-            <div>
-                Throttle: <input type="range" id="throttleSlider" min="0" max="1" step="0.1" value="0.7" onchange="setThrottle()">
-                <span id="throttleValue">0.7</span>
-            </div>
-            <div>
-                Flaps: <input type="range" id="flapsSlider" min="0" max="1" step="0.1" value="0" onchange="setFlaps()">
-                <span id="flapsValue">0.0</span>
-            </div>
+      <div class="property-input">
+        <label>Flight Controls:</label>
+        <div>
+          Elevator:
+          <input
+            type="range"
+            id="elevatorSlider"
+            min="-1"
+            max="1"
+            step="0.1"
+            value="0"
+            onchange="setElevator()" />
+          <span id="elevatorValue">0.0</span>
         </div>
+        <div>
+          Aileron:
+          <input
+            type="range"
+            id="aileronSlider"
+            min="-1"
+            max="1"
+            step="0.1"
+            value="0"
+            onchange="setAileron()" />
+          <span id="aileronValue">0.0</span>
+        </div>
+        <div>
+          Rudder:
+          <input
+            type="range"
+            id="rudderSlider"
+            min="-1"
+            max="1"
+            step="0.1"
+            value="0"
+            onchange="setRudder()" />
+          <span id="rudderValue">0.0</span>
+        </div>
+        <div>
+          Throttle:
+          <input
+            type="range"
+            id="throttleSlider"
+            min="0"
+            max="1"
+            step="0.1"
+            value="0.7"
+            onchange="setThrottle()" />
+          <span id="throttleValue">0.7</span>
+        </div>
+        <div>
+          Flaps:
+          <input
+            type="range"
+            id="flapsSlider"
+            min="0"
+            max="1"
+            step="0.1"
+            value="0"
+            onchange="setFlaps()" />
+          <span id="flapsValue">0.0</span>
+        </div>
+      </div>
 
-        <div class="property-input">
-            <label>Engine Controls:</label>
-            <button onclick="startEngine()">Start Engine</button>
-            <button onclick="stopEngine()">Stop Engine</button>
-            <span id="engineStatus">Stopped</span>
-        </div>
+      <div class="property-input">
+        <label>Engine Controls:</label>
+        <button onclick="startEngine()">Start Engine</button>
+        <button onclick="stopEngine()">Stop Engine</button>
+        <span id="engineStatus">Stopped</span>
+      </div>
 
-        <div class="property-input">
-            <label>Landing Gear:</label>
-            <button onclick="toggleGear()">Toggle Gear</button>
-            <span id="gearStatus">Down</span>
-        </div>
+      <div class="property-input">
+        <label>Landing Gear:</label>
+        <button onclick="toggleGear()">Toggle Gear</button>
+        <span id="gearStatus">Down</span>
+      </div>
 
-        <div class="property-input">
-            <label>Manual Property:</label>
-            <input type="text" id="propertyName" placeholder="property/name" value="ic/h-sl-ft">
-            <input type="number" id="propertyValue" placeholder="value" value="5000">
-            <button onclick="setProperty()">Set</button>
-        </div>
+      <div class="property-input">
+        <label>Manual Property:</label>
+        <input
+          type="text"
+          id="propertyName"
+          placeholder="property/name"
+          value="ic/h-sl-ft" />
+        <input
+          type="number"
+          id="propertyValue"
+          placeholder="value"
+          value="5000" />
+        <button onclick="setProperty()">Set</button>
+      </div>
 
-        <div class="container">
-            <h3>Simulation Data</h3>
-            <div id="simulationData" class="data-display">
-                No data available
-            </div>
-        </div>
+      <div class="container">
+        <h3>Simulation Data</h3>
+        <div id="simulationData" class="data-display">No data available</div>
+      </div>
 
-        <div class="container">
-            <h3>Console Output</h3>
-            <div id="consoleOutput" class="data-display">
-                Ready to start simulation...
-            </div>
+      <div class="container">
+        <h3>Console Output</h3>
+        <div id="consoleOutput" class="data-display">
+          Ready to start simulation...
         </div>
+      </div>
     </div>
 
-    <!-- Load JSBSim WebAssembly module -->
-    <script src="../dist/jsbsim.bundle.js"></script>
+    <!-- Load JSBSim WebAssembly module as ES6 module and expose globally -->
+    <script type="module">
+      import JSBSimModule from '/dist/jsbsim.js';
+      window.JSBSimModule = JSBSimModule;
+      console.log('JSBSim WebAssembly module loaded and exposed globally');
+    </script>
+    <!-- Load the TypeScript bundle -->
+    <script src="/dist/jsbsim.bundle.js"></script>
 
     <script>
-        let jsbsim = null;
-        let simulationRunning = false;
-        let simulationTimer = null;
+      let jsbsim = null;
+      let simulationRunning = false;
+      let simulationTimer = null;
 
-        function log(message) {
-            const consoleOutput = document.getElementById('consoleOutput');
-            const timestamp = new Date().toLocaleTimeString();
-            consoleOutput.textContent += `[${timestamp}] ${message}\n`;
-            consoleOutput.scrollTop = consoleOutput.scrollHeight;
-            console.log(message);
+      function log(message) {
+        const consoleOutput = document.getElementById("consoleOutput");
+        const timestamp = new Date().toLocaleTimeString();
+        consoleOutput.textContent += `[${timestamp}] ${message}\n`;
+        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        console.log(message);
+      }
+
+      function updateStatus(message, type = "loading") {
+        const statusEl = document.getElementById("status");
+        statusEl.textContent = message;
+        statusEl.className = `status ${type}`;
+      }
+
+      function enableButton(id, enabled = true) {
+        document.getElementById(id).disabled = !enabled;
+      }
+
+      async function initializeJSBSim() {
+        try {
+          updateStatus("Initializing JSBSim WebAssembly module...", "loading");
+          log("Starting JSBSim initialization...");
+
+          jsbsim = new JSBSim();
+
+          // Initialize JSBSim
+          await jsbsim.init({
+            // Note: In a real application, you would need to provide
+            // aircraft data files through the dataFiles option
+          });
+
+          log("JSBSim initialized successfully");
+          updateStatus("JSBSim initialized successfully", "success");
+
+          enableButton("loadAircraftBtn");
+          enableButton("initBtn", false);
+
+          // Display JSBSim version
+          const fdm = jsbsim.getFDM();
+          const version = fdm.getVersion();
+          log(`JSBSim version: ${version}`);
+        } catch (error) {
+          log(`Initialization failed: ${error.message}`);
+          updateStatus(`Initialization failed: ${error.message}`, "error");
         }
+      }
 
-        function updateStatus(message, type = 'loading') {
-            const statusEl = document.getElementById('status');
-            statusEl.textContent = message;
-            statusEl.className = `status ${type}`;
+      async function loadAircraft() {
+        try {
+          updateStatus("Loading aircraft...", "loading");
+          log("Loading aircraft model...");
+
+          // Note: This will fail without actual aircraft data files
+          // In a real application, you would load aircraft data through
+          // the virtual file system
+          const loaded = jsbsim.loadAircraft("c172x");
+
+          if (loaded) {
+            log("Aircraft loaded successfully");
+            updateStatus("Aircraft loaded successfully", "success");
+
+            enableButton("runSimBtn");
+            enableButton("stepBtn");
+            enableButton("resetBtn");
+            enableButton("loadAircraftBtn", false);
+
+            // Set up initial conditions
+            jsbsim.setProperty("ic/h-sl-ft", 5000);
+            jsbsim.setProperty("ic/vc-kts", 120);
+
+            const fdm = jsbsim.getFDM();
+            fdm.runIC();
+
+            log("Initial conditions set");
+            updateSimulationData();
+          } else {
+            throw new Error("Failed to load aircraft model");
+          }
+        } catch (error) {
+          log(`Aircraft loading failed: ${error.message}`);
+          updateStatus(`Aircraft loading failed: ${error.message}`, "error");
         }
+      }
 
-        function enableButton(id, enabled = true) {
-            document.getElementById(id).disabled = !enabled;
-        }
+      function runSimulation() {
+        if (simulationRunning) {
+          // Stop simulation
+          simulationRunning = false;
+          clearInterval(simulationTimer);
+          updateStatus("Simulation stopped", "success");
+          document.getElementById("runSimBtn").textContent = "Run Simulation";
+          log("Simulation stopped");
+        } else {
+          // Start simulation
+          simulationRunning = true;
+          updateStatus("Simulation running...", "loading");
+          document.getElementById("runSimBtn").textContent = "Stop Simulation";
+          log("Starting continuous simulation...");
 
-        async function initializeJSBSim() {
+          simulationTimer = setInterval(() => {
             try {
-                updateStatus('Initializing JSBSim WebAssembly module...', 'loading');
-                log('Starting JSBSim initialization...');
-
-                jsbsim = new JSBSim();
-
-                // Initialize JSBSim
-                await jsbsim.init({
-                    // Note: In a real application, you would need to provide
-                    // aircraft data files through the dataFiles option
-                });
-
-                log('JSBSim initialized successfully');
-                updateStatus('JSBSim initialized successfully', 'success');
-
-                enableButton('loadAircraftBtn');
-                enableButton('initBtn', false);
-
-                // Display JSBSim version
-                const fdm = jsbsim.getFDM();
-                const version = fdm.getVersion();
-                log(`JSBSim version: ${version}`);
-
+              const success = jsbsim.step();
+              if (!success) {
+                throw new Error("Simulation step failed");
+              }
+              updateSimulationData();
             } catch (error) {
-                log(`Initialization failed: ${error.message}`);
-                updateStatus(`Initialization failed: ${error.message}`, 'error');
+              log(`Simulation error: ${error.message}`);
+              simulationRunning = false;
+              clearInterval(simulationTimer);
+              updateStatus("Simulation error", "error");
+              document.getElementById("runSimBtn").textContent =
+                "Run Simulation";
             }
+          }, 50); // 20 Hz update rate
         }
+      }
 
-        async function loadAircraft() {
-            try {
-                updateStatus('Loading aircraft...', 'loading');
-                log('Loading aircraft model...');
-
-                // Note: This will fail without actual aircraft data files
-                // In a real application, you would load aircraft data through
-                // the virtual file system
-                const loaded = jsbsim.loadAircraft('c172x');
-
-                if (loaded) {
-                    log('Aircraft loaded successfully');
-                    updateStatus('Aircraft loaded successfully', 'success');
-
-                    enableButton('runSimBtn');
-                    enableButton('stepBtn');
-                    enableButton('resetBtn');
-                    enableButton('loadAircraftBtn', false);
-
-                    // Set up initial conditions
-                    jsbsim.setProperty('ic/h-sl-ft', 5000);
-                    jsbsim.setProperty('ic/vc-kts', 120);
-
-                    const fdm = jsbsim.getFDM();
-                    fdm.runIC();
-
-                    log('Initial conditions set');
-                    updateSimulationData();
-                } else {
-                    throw new Error('Failed to load aircraft model');
-                }
-
-            } catch (error) {
-                log(`Aircraft loading failed: ${error.message}`);
-                updateStatus(`Aircraft loading failed: ${error.message}`, 'error');
-            }
+      function stepSimulation() {
+        try {
+          const success = jsbsim.step();
+          if (success) {
+            updateSimulationData();
+            log("Simulation stepped forward");
+          } else {
+            throw new Error("Simulation step failed");
+          }
+        } catch (error) {
+          log(`Step failed: ${error.message}`);
+          updateStatus(`Step failed: ${error.message}`, "error");
         }
+      }
 
-        function runSimulation() {
-            if (simulationRunning) {
-                // Stop simulation
-                simulationRunning = false;
-                clearInterval(simulationTimer);
-                updateStatus('Simulation stopped', 'success');
-                document.getElementById('runSimBtn').textContent = 'Run Simulation';
-                log('Simulation stopped');
-            } else {
-                // Start simulation
-                simulationRunning = true;
-                updateStatus('Simulation running...', 'loading');
-                document.getElementById('runSimBtn').textContent = 'Stop Simulation';
-                log('Starting continuous simulation...');
-
-                simulationTimer = setInterval(() => {
-                    try {
-                        const success = jsbsim.step();
-                        if (!success) {
-                            throw new Error('Simulation step failed');
-                        }
-                        updateSimulationData();
-                    } catch (error) {
-                        log(`Simulation error: ${error.message}`);
-                        simulationRunning = false;
-                        clearInterval(simulationTimer);
-                        updateStatus('Simulation error', 'error');
-                        document.getElementById('runSimBtn').textContent = 'Run Simulation';
-                    }
-                }, 50); // 20 Hz update rate
-            }
+      function resetSimulation() {
+        try {
+          jsbsim.reset();
+          updateSimulationData();
+          log("Simulation reset to initial conditions");
+          updateStatus("Simulation reset", "success");
+        } catch (error) {
+          log(`Reset failed: ${error.message}`);
+          updateStatus(`Reset failed: ${error.message}`, "error");
         }
+      }
 
-        function stepSimulation() {
-            try {
-                const success = jsbsim.step();
-                if (success) {
-                    updateSimulationData();
-                    log('Simulation stepped forward');
-                } else {
-                    throw new Error('Simulation step failed');
-                }
-            } catch (error) {
-                log(`Step failed: ${error.message}`);
-                updateStatus(`Step failed: ${error.message}`, 'error');
-            }
+      function setProperty() {
+        try {
+          const name = document.getElementById("propertyName").value;
+          const value = parseFloat(
+            document.getElementById("propertyValue").value
+          );
+
+          jsbsim.setProperty(name, value);
+          log(`Set property ${name} = ${value}`);
+          updateSimulationData();
+        } catch (error) {
+          log(`Failed to set property: ${error.message}`);
         }
+      }
 
-        function resetSimulation() {
-            try {
-                jsbsim.reset();
-                updateSimulationData();
-                log('Simulation reset to initial conditions');
-                updateStatus('Simulation reset', 'success');
-            } catch (error) {
-                log(`Reset failed: ${error.message}`);
-                updateStatus(`Reset failed: ${error.message}`, 'error');
-            }
+      function getProperty() {
+        try {
+          const name = document.getElementById("getPropertyName").value;
+          const value = jsbsim.getProperty(name);
+
+          document.getElementById("propertyResult").textContent =
+            value.toFixed(6);
+          log(`Got property ${name} = ${value}`);
+        } catch (error) {
+          log(`Failed to get property: ${error.message}`);
+          document.getElementById("propertyResult").textContent = "Error";
         }
+      }
 
-        function setProperty() {
-            try {
-                const name = document.getElementById('propertyName').value;
-                const value = parseFloat(document.getElementById('propertyValue').value);
-
-                jsbsim.setProperty(name, value);
-                log(`Set property ${name} = ${value}`);
-                updateSimulationData();
-            } catch (error) {
-                log(`Failed to set property: ${error.message}`);
-            }
+      // Flight control functions using wrapper methods
+      function setElevator() {
+        if (!jsbsim) return;
+        const value = parseFloat(
+          document.getElementById("elevatorSlider").value
+        );
+        try {
+          jsbsim.setElevator(value);
+          document.getElementById("elevatorValue").textContent =
+            value.toFixed(1);
+          log(`Set elevator to ${value.toFixed(2)}`);
+        } catch (error) {
+          log(`Failed to set elevator: ${error.message}`);
         }
+      }
 
-        function getProperty() {
-            try {
-                const name = document.getElementById('getPropertyName').value;
-                const value = jsbsim.getProperty(name);
-
-                document.getElementById('propertyResult').textContent = value.toFixed(6);
-                log(`Got property ${name} = ${value}`);
-            } catch (error) {
-                log(`Failed to get property: ${error.message}`);
-                document.getElementById('propertyResult').textContent = 'Error';
-            }
+      function setAileron() {
+        if (!jsbsim) return;
+        const value = parseFloat(
+          document.getElementById("aileronSlider").value
+        );
+        try {
+          jsbsim.setAileron(value);
+          document.getElementById("aileronValue").textContent =
+            value.toFixed(1);
+          log(`Set aileron to ${value.toFixed(2)}`);
+        } catch (error) {
+          log(`Failed to set aileron: ${error.message}`);
         }
+      }
 
-        // Flight control functions using wrapper methods
-        function setElevator() {
-            if (!jsbsim) return;
-            const value = parseFloat(document.getElementById('elevatorSlider').value);
-            try {
-                jsbsim.setElevator(value);
-                document.getElementById('elevatorValue').textContent = value.toFixed(1);
-                log(`Set elevator to ${value.toFixed(2)}`);
-            } catch (error) {
-                log(`Failed to set elevator: ${error.message}`);
-            }
+      function setRudder() {
+        if (!jsbsim) return;
+        const value = parseFloat(document.getElementById("rudderSlider").value);
+        try {
+          jsbsim.setRudder(value);
+          document.getElementById("rudderValue").textContent = value.toFixed(1);
+          log(`Set rudder to ${value.toFixed(2)}`);
+        } catch (error) {
+          log(`Failed to set rudder: ${error.message}`);
         }
+      }
 
-        function setAileron() {
-            if (!jsbsim) return;
-            const value = parseFloat(document.getElementById('aileronSlider').value);
-            try {
-                jsbsim.setAileron(value);
-                document.getElementById('aileronValue').textContent = value.toFixed(1);
-                log(`Set aileron to ${value.toFixed(2)}`);
-            } catch (error) {
-                log(`Failed to set aileron: ${error.message}`);
-            }
+      function setThrottle() {
+        if (!jsbsim) return;
+        const value = parseFloat(
+          document.getElementById("throttleSlider").value
+        );
+        try {
+          jsbsim.setAllThrottles(value);
+          document.getElementById("throttleValue").textContent =
+            value.toFixed(1);
+          log(`Set throttle to ${value.toFixed(2)}`);
+        } catch (error) {
+          log(`Failed to set throttle: ${error.message}`);
         }
+      }
 
-        function setRudder() {
-            if (!jsbsim) return;
-            const value = parseFloat(document.getElementById('rudderSlider').value);
-            try {
-                jsbsim.setRudder(value);
-                document.getElementById('rudderValue').textContent = value.toFixed(1);
-                log(`Set rudder to ${value.toFixed(2)}`);
-            } catch (error) {
-                log(`Failed to set rudder: ${error.message}`);
-            }
+      function setFlaps() {
+        if (!jsbsim) return;
+        const value = parseFloat(document.getElementById("flapsSlider").value);
+        try {
+          jsbsim.setFlaps(value);
+          document.getElementById("flapsValue").textContent = value.toFixed(1);
+          log(`Set flaps to ${value.toFixed(2)}`);
+        } catch (error) {
+          log(`Failed to set flaps: ${error.message}`);
         }
+      }
 
-        function setThrottle() {
-            if (!jsbsim) return;
-            const value = parseFloat(document.getElementById('throttleSlider').value);
-            try {
-                jsbsim.setAllThrottles(value);
-                document.getElementById('throttleValue').textContent = value.toFixed(1);
-                log(`Set throttle to ${value.toFixed(2)}`);
-            } catch (error) {
-                log(`Failed to set throttle: ${error.message}`);
-            }
+      function startEngine() {
+        if (!jsbsim) return;
+        try {
+          jsbsim.startAllEngines();
+          jsbsim.setAllThrottles(0.8);
+          document.getElementById("engineStatus").textContent = "Running";
+          log("Engine started");
+        } catch (error) {
+          log(`Failed to start engine: ${error.message}`);
         }
+      }
 
-        function setFlaps() {
-            if (!jsbsim) return;
-            const value = parseFloat(document.getElementById('flapsSlider').value);
-            try {
-                jsbsim.setFlaps(value);
-                document.getElementById('flapsValue').textContent = value.toFixed(1);
-                log(`Set flaps to ${value.toFixed(2)}`);
-            } catch (error) {
-                log(`Failed to set flaps: ${error.message}`);
-            }
+      function stopEngine() {
+        if (!jsbsim) return;
+        try {
+          jsbsim.stopAllEngines();
+          jsbsim.setAllThrottles(0.0);
+          document.getElementById("engineStatus").textContent = "Stopped";
+          log("Engine stopped");
+        } catch (error) {
+          log(`Failed to stop engine: ${error.message}`);
         }
+      }
 
-        function startEngine() {
-            if (!jsbsim) return;
-            try {
-                jsbsim.startAllEngines();
-                jsbsim.setAllThrottles(0.8);
-                document.getElementById('engineStatus').textContent = 'Running';
-                log('Engine started');
-            } catch (error) {
-                log(`Failed to start engine: ${error.message}`);
-            }
+      let gearUp = false;
+      function toggleGear() {
+        if (!jsbsim) return;
+        try {
+          gearUp = !gearUp;
+          jsbsim.setLandingGear(gearUp ? 0.0 : 1.0);
+          document.getElementById("gearStatus").textContent = gearUp
+            ? "Up"
+            : "Down";
+          log(`Landing gear ${gearUp ? "retracted" : "extended"}`);
+        } catch (error) {
+          log(`Failed to toggle gear: ${error.message}`);
         }
+      }
 
-        function stopEngine() {
-            if (!jsbsim) return;
-            try {
-                jsbsim.stopAllEngines();
-                jsbsim.setAllThrottles(0.0);
-                document.getElementById('engineStatus').textContent = 'Stopped';
-                log('Engine stopped');
-            } catch (error) {
-                log(`Failed to stop engine: ${error.message}`);
-            }
-        }
+      function updateSimulationData() {
+        if (!jsbsim) return;
 
-        let gearUp = false;
-        function toggleGear() {
-            if (!jsbsim) return;
-            try {
-                gearUp = !gearUp;
-                jsbsim.setLandingGear(gearUp ? 0.0 : 1.0);
-                document.getElementById('gearStatus').textContent = gearUp ? 'Up' : 'Down';
-                log(`Landing gear ${gearUp ? 'retracted' : 'extended'}`);
-            } catch (error) {
-                log(`Failed to toggle gear: ${error.message}`);
-            }
-        }
+        try {
+          // Use wrapper methods for cleaner code
+          const time = jsbsim.getTime();
+          const position = jsbsim.getPosition();
+          const attitude = jsbsim.getAttitude();
+          const velocity = jsbsim.getVelocity();
+          const rates = jsbsim.getAngularRates();
+          const aero = {
+            alpha: jsbsim.getAngleOfAttack(),
+            beta: jsbsim.getSideslipAngle(),
+            qbar: jsbsim.getDynamicPressure(),
+          };
 
-        function updateSimulationData() {
-            if (!jsbsim) return;
+          // Get engine status
+          let engineInfo = "No engines";
+          try {
+            const engineRunning = jsbsim.isEngineRunning(0);
+            const thrust = jsbsim.getEngineThrust(0);
+            engineInfo = `Engine: ${
+              engineRunning ? "Running" : "Stopped"
+            }, Thrust: ${thrust.toFixed(0)} lbs`;
+          } catch (e) {
+            // Engine not available
+          }
 
-            try {
-                // Use wrapper methods for cleaner code
-                const time = jsbsim.getTime();
-                const position = jsbsim.getPosition();
-                const attitude = jsbsim.getAttitude();
-                const velocity = jsbsim.getVelocity();
-                const rates = jsbsim.getAngularRates();
-                const aero = {
-                    alpha: jsbsim.getAngleOfAttack(),
-                    beta: jsbsim.getSideslipAngle(),
-                    qbar: jsbsim.getDynamicPressure()
-                };
+          // Get gear status
+          let gearInfo = "N/A";
+          try {
+            const gearPos = jsbsim.getLandingGearPosition();
+            const onGround = jsbsim.isOnGround();
+            gearInfo = `Gear: ${gearPos.toFixed(2)}, On Ground: ${onGround}`;
+          } catch (e) {
+            // Gear not available
+          }
 
-                // Get engine status
-                let engineInfo = 'No engines';
-                try {
-                    const engineRunning = jsbsim.isEngineRunning(0);
-                    const thrust = jsbsim.getEngineThrust(0);
-                    engineInfo = `Engine: ${engineRunning ? 'Running' : 'Stopped'}, Thrust: ${thrust.toFixed(0)} lbs`;
-                } catch (e) {
-                    // Engine not available
-                }
-
-                // Get gear status
-                let gearInfo = 'N/A';
-                try {
-                    const gearPos = jsbsim.getLandingGearPosition();
-                    const onGround = jsbsim.isOnGround();
-                    gearInfo = `Gear: ${gearPos.toFixed(2)}, On Ground: ${onGround}`;
-                } catch (e) {
-                    // Gear not available
-                }
-
-                const data = `Time: ${time.toFixed(2)} seconds
+          const data = `Time: ${time.toFixed(2)} seconds
 
 POSITION:
 Latitude: ${position.latitude.toFixed(6)}°
@@ -502,24 +581,26 @@ Aileron: ${jsbsim.getAileronPosition().toFixed(2)}
 Rudder: ${jsbsim.getRudderPosition().toFixed(2)}
 Flaps: ${jsbsim.getFlapsPosition().toFixed(2)}`;
 
-                document.getElementById('simulationData').textContent = data;
-            } catch (error) {
-                document.getElementById('simulationData').textContent = `Error reading data: ${error.message}`;
-            }
+          document.getElementById("simulationData").textContent = data;
+        } catch (error) {
+          document.getElementById(
+            "simulationData"
+          ).textContent = `Error reading data: ${error.message}`;
         }
+      }
 
-        // Initialize on page load
-        window.addEventListener('load', () => {
-            log('Page loaded, ready to initialize JSBSim');
-            enableButton('initBtn');
-        });
+      // Initialize on page load
+      window.addEventListener("load", () => {
+        log("Page loaded, ready to initialize JSBSim");
+        enableButton("initBtn");
+      });
 
-        // Clean up on page unload
-        window.addEventListener('beforeunload', () => {
-            if (simulationRunning) {
-                clearInterval(simulationTimer);
-            }
-        });
+      // Clean up on page unload
+      window.addEventListener("beforeunload", () => {
+        if (simulationRunning) {
+          clearInterval(simulationTimer);
+        }
+      });
     </script>
-</body>
+  </body>
 </html>

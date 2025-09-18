@@ -7,10 +7,20 @@
 
 /// <reference types="emscripten" />
 
-// JSBSim WebAssembly module factory - will be available after build
-// For now, provide a stub implementation for testing
+// Declare the global JSBSimModule function from the Emscripten-generated code
+declare global {
+  var JSBSimModule: (() => Promise<JSBSimModule>) | undefined;
+}
+
+// JSBSim WebAssembly module factory - loads the WASM module
 const JSBSimModuleFactory: () => Promise<JSBSimModule> = async () => {
-  throw new Error('JSBSim WebAssembly module not available. Build the WASM module first.');
+  // Check if the global JSBSimModule function is available
+  if (typeof JSBSimModule === 'function') {
+    return JSBSimModule() as Promise<JSBSimModule>;
+  }
+
+  // If not available, throw an error with instructions
+  throw new Error('JSBSim WebAssembly module not available. Make sure jsbsim.js is loaded before initializing JSBSim.');
 };
 
 export interface JSBSimModule extends EmscriptenModule {

@@ -5,9 +5,13 @@
   "main": "dist/jsbsim.js",
   "types": "dist/jsbsim.d.ts",
   "scripts": {
-    "build:wasm": "emcmake cmake -B build -DCMAKE_BUILD_TYPE=Release && emmake make -C build -j4",
+    "build:wasm": "source /tmp/emsdk/emsdk_env.sh && emcmake cmake -B build -DCMAKE_BUILD_TYPE=Release && emmake make -C build -j4",
     "build:bindings": "node scripts/build-bindings.js",
     "build": "npm run build:wasm && npm run build:bindings",
+    "build:dev": "node scripts/build-bindings.js --dev",
+    "serve": "node scripts/dev-server.js",
+    "dev": "npm run build:dev && npm run serve",
+    "example": "npm run build:dev && npm run serve",
     "test": "jest",
     "clean": "rm -rf build dist"
   },
