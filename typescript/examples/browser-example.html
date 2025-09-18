@@ -83,6 +83,36 @@
 
       <div id="status" class="status loading">Initializing JSBSim...</div>
 
+      <div class="container">
+        <h3>Aircraft Selection</h3>
+        <div class="property-input">
+          <label for="aircraftSelect">Available Aircraft:</label>
+          <select id="aircraftSelect" onchange="onAircraftSelectionChange()" disabled>
+            <option value="">-- Select Aircraft --</option>
+            <option value="c172x">Cessna 172 (Extended)</option>
+            <option value="c172p">Cessna 172P</option>
+            <option value="c172r">Cessna 172R</option>
+            <option value="c182">Cessna 182</option>
+            <option value="c310">Cessna 310</option>
+            <option value="pa28">Piper Cherokee</option>
+            <option value="J3Cub">Piper J3 Cub</option>
+            <option value="737">Boeing 737</option>
+            <option value="787-8">Boeing 787-8</option>
+            <option value="B747">Boeing 747</option>
+            <option value="A320">Airbus A320</option>
+            <option value="f16">F-16 Fighting Falcon</option>
+            <option value="f15">F-15 Eagle</option>
+            <option value="f22">F-22 Raptor</option>
+            <option value="p51d">P-51D Mustang</option>
+            <option value="t6texan2">T-6 Texan II</option>
+            <option value="Concorde">Concorde</option>
+            <option value="X15">X-15</option>
+            <option value="demo">Demo Mode (No Aircraft)</option>
+          </select>
+          <span id="selectedAircraft">None</span>
+        </div>
+      </div>
+
       <div class="controls">
         <button id="initBtn" onclick="initializeJSBSim()" disabled>
           Initialize JSBSim
@@ -209,7 +239,38 @@
     <!-- Load JSBSim WebAssembly module as ES6 module and expose globally -->
     <script type="module">
       import JSBSimModule from '/dist/jsbsim.js';
-      window.JSBSimModule = JSBSimModule;
+
+      // Create a wrapper that ensures the module loads from the correct path
+      window.JSBSimModule = async (moduleOverrides = {}) => {
+        console.log('HTML wrapper: Creating JSBSim module with overrides...');
+
+        // Set the correct path for loading the .data file
+        const defaultOverrides = {
+          locateFile: (path, scriptDirectory) => {
+            console.log('locateFile called with:', path, 'scriptDirectory:', scriptDirectory);
+            if (path.endsWith('.data') || path.endsWith('.wasm')) {
+              const fullPath = '/dist/' + path;
+              console.log('Redirecting to:', fullPath);
+              return fullPath;
+            }
+            return scriptDirectory + path;
+          }
+        };
+
+        // Merge with any user-provided overrides
+        const finalOverrides = { ...defaultOverrides, ...moduleOverrides };
+
+        console.log('HTML wrapper: Calling original JSBSimModule...');
+        try {
+          const result = await JSBSimModule(finalOverrides);
+          console.log('HTML wrapper: JSBSimModule created successfully');
+          return result;
+        } catch (error) {
+          console.error('HTML wrapper: Error creating JSBSimModule:', error);
+          throw error;
+        }
+      };
+
       console.log('JSBSim WebAssembly module loaded and exposed globally');
     </script>
     <!-- Load the TypeScript bundle -->
@@ -247,60 +308,108 @@
 
           // Initialize JSBSim
           await jsbsim.init({
-            // Note: In a real application, you would need to provide
-            // aircraft data files through the dataFiles option
+            // Aircraft data is now embedded in the WebAssembly build
           });
 
           log("JSBSim initialized successfully");
           updateStatus("JSBSim initialized successfully", "success");
 
-          enableButton("loadAircraftBtn");
+          enableButton("loadAircraftBtn", false); // Keep disabled until aircraft selected
           enableButton("initBtn", false);
+          document.getElementById("aircraftSelect").disabled = false;
 
           // Display JSBSim version
           const fdm = jsbsim.getFDM();
           const version = fdm.getVersion();
           log(`JSBSim version: ${version}`);
         } catch (error) {
-          log(`Initialization failed: ${error.message}`);
-          updateStatus(`Initialization failed: ${error.message}`, "error");
+          console.error('Full initialization error:', error);
+          log(`Initialization failed: ${error.message || error}`);
+          updateStatus(`Initialization failed: ${error.message || error}`, "error");
         }
       }
 
+      function onAircraftSelectionChange() {
+        const select = document.getElementById("aircraftSelect");
+        const selectedValue = select.value;
+        document.getElementById("selectedAircraft").textContent =
+          selectedValue ? select.options[select.selectedIndex].text : "None";
+
+        // Enable load button if an aircraft is selected
+        enableButton("loadAircraftBtn", selectedValue !== "");
+      }
+
       async function loadAircraft() {
+        const select = document.getElementById("aircraftSelect");
+        const selectedAircraft = select.value;
+
+        if (!selectedAircraft) {
+          log("Please select an aircraft first");
+          return;
+        }
+
         try {
-          updateStatus("Loading aircraft...", "loading");
-          log("Loading aircraft model...");
+          if (selectedAircraft === "demo") {
+            // Demo mode - no aircraft loading
+            updateStatus("Setting up demo simulation...", "loading");
+            log("Setting up demo simulation without aircraft model...");
 
-          // Note: This will fail without actual aircraft data files
-          // In a real application, you would load aircraft data through
-          // the virtual file system
-          const loaded = jsbsim.loadAircraft("c172x");
-
-          if (loaded) {
-            log("Aircraft loaded successfully");
-            updateStatus("Aircraft loaded successfully", "success");
-
+            // Enable simulation controls immediately
             enableButton("runSimBtn");
             enableButton("stepBtn");
             enableButton("resetBtn");
             enableButton("loadAircraftBtn", false);
+            document.getElementById("aircraftSelect").disabled = true;
 
-            // Set up initial conditions
-            jsbsim.setProperty("ic/h-sl-ft", 5000);
-            jsbsim.setProperty("ic/vc-kts", 120);
+            // Set up basic initial conditions
+            try {
+              jsbsim.setProperty("simulation/sim-time-sec", 0.0);
+              jsbsim.setProperty("simulation/dt", 0.1);
+              log("Basic simulation properties set");
+            } catch (error) {
+              log(`Warning: Could not set initial properties: ${error.message}`);
+            }
 
-            const fdm = jsbsim.getFDM();
-            fdm.runIC();
-
-            log("Initial conditions set");
+            log("Demo simulation ready");
+            updateStatus("Demo simulation ready", "success");
             updateSimulationData();
+
           } else {
-            throw new Error("Failed to load aircraft model");
+            // Load actual aircraft using embedded data
+            updateStatus(`Loading aircraft: ${selectedAircraft}...`, "loading");
+            log(`Loading aircraft: ${selectedAircraft} from embedded data...`);
+
+            // Try to load the aircraft directly (data is now embedded in WASM)
+            const loaded = jsbsim.loadAircraft(selectedAircraft);
+
+            if (loaded) {
+              log(`Aircraft ${selectedAircraft} loaded successfully!`);
+              updateStatus(`Aircraft ${selectedAircraft} loaded successfully`, "success");
+
+              // Enable simulation controls
+              enableButton("runSimBtn");
+              enableButton("stepBtn");
+              enableButton("resetBtn");
+              enableButton("loadAircraftBtn", false);
+              document.getElementById("aircraftSelect").disabled = true;
+
+              // Set up initial conditions
+              jsbsim.setProperty("ic/h-sl-ft", 5000);
+              jsbsim.setProperty("ic/vc-kts", 120);
+
+              const fdm = jsbsim.getFDM();
+              fdm.runIC();
+
+              log("Initial conditions set");
+              updateSimulationData();
+            } else {
+              throw new Error(`JSBSim failed to load aircraft ${selectedAircraft}`);
+            }
           }
         } catch (error) {
           log(`Aircraft loading failed: ${error.message}`);
-          updateStatus(`Aircraft loading failed: ${error.message}`, "error");
+          log("Try selecting 'Demo Mode (No Aircraft)' for testing without aircraft");
+          updateStatus(`Loading failed: ${error.message}`, "error");
         }
       }
 

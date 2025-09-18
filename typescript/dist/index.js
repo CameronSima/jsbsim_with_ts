@@ -8,8 +8,19 @@
 // JSBSim WebAssembly module factory - loads the WASM module
 const JSBSimModuleFactory = async () => {
     // Check if the global JSBSimModule function is available
+    console.log('JSBSimModuleFactory: Checking for global JSBSimModule...');
+    console.log('typeof JSBSimModule:', typeof JSBSimModule);
     if (typeof JSBSimModule === 'function') {
-        return JSBSimModule();
+        console.log('JSBSimModuleFactory: Calling JSBSimModule()...');
+        try {
+            const module = await JSBSimModule();
+            console.log('JSBSimModuleFactory: Module created successfully:', !!module);
+            return module;
+        }
+        catch (error) {
+            console.error('JSBSimModuleFactory: Error during module creation:', error);
+            throw error;
+        }
     }
     // If not available, throw an error with instructions
     throw new Error('JSBSim WebAssembly module not available. Make sure jsbsim.js is loaded before initializing JSBSim.');
@@ -63,33 +74,46 @@ export class JSBSim {
      */
     async init(config = {}) {
         try {
+            console.log('Loading JSBSim WebAssembly module...');
             this.module = await JSBSimModuleFactory();
+            console.log('JSBSim WebAssembly module loaded successfully');
             // Set up virtual file system if data files are provided
             if (config.dataFiles && config.dataFiles.length > 0) {
+                console.log('Loading data files into virtual file system...');
                 this.module.loadDataFiles(config.dataFiles);
             }
             // Set up paths
             if (config.rootDir) {
+                console.log(`Setting up JSBSim paths with root: ${config.rootDir}`);
                 this.module.setupJSBSimPaths(config.rootDir);
             }
             // Create FDM executive
+            console.log('Creating FDM executive...');
             this.fdm = new this.module.FGFDMExec(config.rootDir || '');
+            console.log('FDM executive created successfully');
             // Configure paths
             if (config.aircraftPath) {
+                console.log(`Setting aircraft path: ${config.aircraftPath}`);
                 this.fdm.setAircraftPath(config.aircraftPath);
             }
             if (config.enginePath) {
+                console.log(`Setting engine path: ${config.enginePath}`);
                 this.fdm.setEnginePath(config.enginePath);
             }
             if (config.systemsPath) {
+                console.log(`Setting systems path: ${config.systemsPath}`);
                 this.fdm.setSystemsPath(config.systemsPath);
             }
             if (config.outputPath) {
+                console.log(`Setting output path: ${config.outputPath}`);
                 this.fdm.setOutputPath(config.outputPath);
             }
+            console.log('JSBSim initialization completed successfully');
         }
         catch (error) {
-            throw new BaseError(`Failed to initialize JSBSim: ${error}`);
+            console.error('JSBSim initialization error details:', error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            throw new BaseError(`Failed to initialize JSBSim: ${errorMessage}`);
         }
     }
     /**

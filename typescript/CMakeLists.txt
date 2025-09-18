@@ -214,6 +214,9 @@ target_link_options(jsbsim_wasm PRIVATE
     "SHELL:-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap','addFunction','removeFunction','getValue','setValue','UTF8ToString','stringToUTF8']"
     "SHELL:--bind"
     "SHELL:--pre-js ${CMAKE_CURRENT_SOURCE_DIR}/src/pre.js"
+    "SHELL:--preload-file ${JSBSIM_ROOT}/aircraft@/aircraft"
+    "SHELL:--preload-file ${JSBSIM_ROOT}/engine@/engine"
+    "SHELL:--preload-file ${JSBSIM_ROOT}/systems@/systems"
 )
 
 # Set output directory

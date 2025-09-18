@@ -23,6 +23,7 @@ const mimeTypes = {
     '.html': 'text/html',
     '.js': 'application/javascript',
     '.wasm': 'application/wasm',
+    '.data': 'application/octet-stream',
     '.css': 'text/css',
     '.json': 'application/json',
     '.png': 'image/png',
