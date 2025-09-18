@@ -597,9 +597,56 @@
               jsbsim.setProperty("ic/vc-kts", 120);
 
               const fdm = jsbsim.getFDM();
+
+              // Initialize the simulation properly
+              log("Running initial conditions...");
               fdm.runIC();
 
+              // Run several simulation steps to initialize all systems
+              log("Initializing aircraft systems...");
+              for (let i = 0; i < 10; i++) {
+                fdm.run();
+              }
+
+              // Ensure propulsion system is initialized
+              try {
+                const propulsion = fdm.getPropulsion();
+                propulsion.initRunning(-1); // Initialize all engines in not-running state
+                log("Propulsion system initialized");
+              } catch (e) {
+                log(`Warning: Could not initialize propulsion: ${e.message}`);
+              }
+
               log("Initial conditions set");
+
+              // Debug engine loading
+              try {
+                const propulsion = fdm.getPropulsion();
+                const numEngines = propulsion.getNumEngines();
+                log(`Propulsion system loaded: ${numEngines} engine(s) detected`);
+
+                for (let i = 0; i < numEngines; i++) {
+                  const engine = propulsion.getEngine(i);
+                  const engineType = jsbsim.getEngineType(i);
+                  log(`Engine ${i}: Type = ${engineType}, Running = ${jsbsim.isEngineRunning(i)}`);
+
+                  // Check key engine properties
+                  try {
+                    const maxHP = jsbsim.getEngineMaxPowerHP(i);
+                    const rpm = jsbsim.getEngineRPM(i);
+                    log(`Engine ${i} properties: MaxHP = ${maxHP}, RPM = ${rpm}`);
+
+                    // List all available properties for debugging
+                    const props = jsbsim.getEnginePropertyList(i);
+                    log(`Engine ${i} available properties: ${props.join(', ')}`);
+                  } catch (e) {
+                    log(`Engine ${i} property error: ${e.message}`);
+                  }
+                }
+              } catch (e) {
+                log(`Engine debug error: ${e.message}`);
+              }
+
               updateSimulationData();
             } else {
               throw new Error(`JSBSim failed to load aircraft ${selectedAircraft}`);
@@ -775,10 +822,48 @@
       function startEngine() {
         if (!jsbsim) return;
         try {
+          log("Starting engine procedure...");
+
+          // Debug current engine state
+          const propulsion = jsbsim.getFDM().getPropulsion();
+          const numEngines = propulsion.getNumEngines();
+          log(`Number of engines: ${numEngines}`);
+
+          for (let i = 0; i < numEngines; i++) {
+            const beforeRunning = jsbsim.isEngineRunning(i);
+            log(`Engine ${i} running before start: ${beforeRunning}`);
+          }
+
+          // Try starting engines
           jsbsim.startAllEngines();
+
+          // Check if engines started
+          for (let i = 0; i < numEngines; i++) {
+            const afterRunning = jsbsim.isEngineRunning(i);
+            const rpm = jsbsim.getEngineRPM(i);
+            const power = jsbsim.getEnginePowerHP(i);
+            log(`Engine ${i} after start: running=${afterRunning}, rpm=${rpm}, power=${power}HP`);
+          }
+
+          // Set throttle
           jsbsim.setAllThrottles(0.8);
-          document.getElementById("engineStatus").textContent = "Running";
-          log("Engine started");
+          log("Throttle set to 80%");
+
+          // Run a few more simulation steps
+          const fdm = jsbsim.getFDM();
+          for (let step = 0; step < 10; step++) {
+            fdm.run();
+          }
+
+          // Final check
+          const finalRunning = jsbsim.isEngineRunning(0);
+          const finalRPM = jsbsim.getEngineRPM(0);
+          const finalPower = jsbsim.getEnginePowerHP(0);
+
+          log(`Final engine state: running=${finalRunning}, rpm=${finalRPM}, power=${finalPower}HP`);
+
+          document.getElementById("engineStatus").textContent = finalRunning ? "Running" : "Stopped";
+          log(finalRunning ? "Engine started successfully" : "Engine failed to start");
         } catch (error) {
           log(`Failed to start engine: ${error.message}`);
         }
@@ -827,16 +912,44 @@
             qbar: jsbsim.getDynamicPressure(),
           };
 
-          // Get engine status
+          // Get detailed engine status for all engines
           let engineInfo = "No engines";
           try {
-            const engineRunning = jsbsim.isEngineRunning(0);
-            const thrust = jsbsim.getEngineThrust(0);
-            engineInfo = `Engine: ${
-              engineRunning ? "Running" : "Stopped"
-            }, Thrust: ${thrust.toFixed(0)} lbs`;
+            const propulsion = jsbsim.getFDM().getPropulsion();
+            const numEngines = propulsion.getNumEngines();
+
+            if (numEngines > 0) {
+              let engines = [];
+              for (let i = 0; i < numEngines; i++) {
+                const running = jsbsim.isEngineRunning(i);
+                const thrust = jsbsim.getEngineThrust(i);
+                const rpm = jsbsim.getEngineRPM(i);
+                const powerHP = jsbsim.getEnginePowerHP(i);
+                const maxHP = jsbsim.getEngineMaxPowerHP(i);
+                const fuelFlow = jsbsim.getEngineFuelFlow(i);
+                const temperature = jsbsim.getEngineTemperature(i);
+                const manifoldPressure = jsbsim.getEngineManifoldPressure(i);
+                const n1 = jsbsim.getEngineN1(i);
+                const n2 = jsbsim.getEngineN2(i);
+                const engineType = jsbsim.getEngineType(i);
+
+                let engineDetails = `Engine ${i + 1} (${engineType}): ${running ? "Running" : "Stopped"}`;
+                engineDetails += `\n  RPM: ${rpm.toFixed(0)}`;
+                engineDetails += `\n  Power: ${powerHP.toFixed(1)} HP`;
+                if (maxHP > 0) engineDetails += ` / ${maxHP.toFixed(0)} HP max`;
+                engineDetails += `\n  Thrust: ${thrust.toFixed(0)} lbs`;
+                if (fuelFlow > 0) engineDetails += `\n  Fuel Flow: ${fuelFlow.toFixed(1)} lbs/hr`;
+                if (temperature > 0) engineDetails += `\n  Temperature: ${temperature.toFixed(0)}°F`;
+                if (manifoldPressure > 0) engineDetails += `\n  Manifold Pressure: ${manifoldPressure.toFixed(1)} inHg`;
+                if (n1 > 0) engineDetails += `\n  N1: ${n1.toFixed(1)}%`;
+                if (n2 > 0) engineDetails += `\n  N2: ${n2.toFixed(1)}%`;
+
+                engines.push(engineDetails);
+              }
+              engineInfo = engines.join('\n\n');
+            }
           } catch (e) {
-            // Engine not available
+            engineInfo = `Engine data error: ${e.message}`;
           }
 
           // Get gear status
@@ -878,8 +991,10 @@ Angle of Attack: ${aero.alpha.toFixed(2)}°
 Sideslip: ${aero.beta.toFixed(2)}°
 Dynamic Pressure: ${aero.qbar.toFixed(1)} psf
 
-SYSTEMS:
+ENGINES:
 ${engineInfo}
+
+SYSTEMS:
 ${gearInfo}
 Fuel: ${jsbsim.getTotalFuel().toFixed(1)} lbs
 

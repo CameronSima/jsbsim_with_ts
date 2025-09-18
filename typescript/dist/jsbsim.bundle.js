@@ -461,13 +461,68 @@ class JSBSim {
         this.setProperty(`propulsion/engine[${engineIndex}]/set-running`, running ? 1 : 0);
     }
     /**
-     * Start all engines
+     * Set engine starter
+     */
+    setEngineStarter(engineIndex, active) {
+        this.setProperty(`propulsion/engine[${engineIndex}]/starter-norm`, active ? 1 : 0);
+    }
+    /**
+     * Start all engines with proper procedure
      */
     startAllEngines() {
         const propulsion = this.getFDM().getPropulsion();
         const numEngines = propulsion.getNumEngines();
+        const fdm = this.getFDM();
         for (let i = 0; i < numEngines; i++) {
-            this.setEngineRunning(i, true);
+            // Natural engine starting sequence - let JSBSim handle the logic
+            // Step 1: Set fuel and ignition conditions
+            try {
+                // Set mixture rich
+                this.setProperty(`fcs/mixture-cmd-norm[${i}]`, 1.0);
+                this.setProperty('fcs/mixture-cmd-norm', 1.0);
+            }
+            catch (e) { }
+            try {
+                // Set throttle slightly open for starting
+                this.setProperty(`fcs/throttle-cmd-norm[${i}]`, 0.2);
+                this.setProperty('fcs/throttle-cmd-norm', 0.2);
+            }
+            catch (e) { }
+            try {
+                // Magnetos/ignition on
+                this.setProperty(`controls/engines/engine[${i}]/magnetos`, 3);
+                this.setProperty('controls/engines/engine/magnetos', 3);
+            }
+            catch (e) { }
+            try {
+                // Prime the engine
+                this.setProperty(`controls/engines/engine[${i}]/primer`, 3);
+                this.setProperty('controls/engines/engine/primer', 3);
+            }
+            catch (e) { }
+            // Step 2: Engage starter for realistic duration
+            this.setEngineStarter(i, true);
+            // Run simulation for starter duration (realistic engine start)
+            for (let step = 0; step < 50; step++) {
+                fdm.run();
+                // Check if engine has started naturally
+                const currentRPM = this.getEngineRPM(i);
+                if (currentRPM > 400) { // If RPM indicates engine is running
+                    break;
+                }
+            }
+            // Step 3: Turn off starter
+            this.setEngineStarter(i, false);
+            // Step 4: Reduce throttle to idle
+            try {
+                this.setProperty(`fcs/throttle-cmd-norm[${i}]`, 0.1);
+                this.setProperty('fcs/throttle-cmd-norm', 0.1);
+            }
+            catch (e) { }
+            // Step 5: Let engine stabilize at idle
+            for (let step = 0; step < 20; step++) {
+                fdm.run();
+            }
         }
     }
     /**
@@ -477,8 +532,163 @@ class JSBSim {
         const propulsion = this.getFDM().getPropulsion();
         const numEngines = propulsion.getNumEngines();
         for (let i = 0; i < numEngines; i++) {
-            this.setEngineRunning(i, false);
+            this.setEngineStarter(i, false); // Deactivate starter
+            this.setEngineRunning(i, false); // Stop engine
         }
+    }
+    /**
+     * Get engine RPM
+     */
+    getEngineRPM(engineIndex) {
+        try {
+            return this.getProperty(`propulsion/engine[${engineIndex}]/engine-rpm`);
+        }
+        catch (e) {
+            return 0;
+        }
+    }
+    /**
+     * Get engine power (HP)
+     */
+    getEnginePowerHP(engineIndex) {
+        try {
+            return this.getProperty(`propulsion/engine[${engineIndex}]/power-hp`);
+        }
+        catch (e) {
+            return 0;
+        }
+    }
+    /**
+     * Get engine maximum power (HP)
+     */
+    getEngineMaxPowerHP(engineIndex) {
+        try {
+            // Try different possible property paths for max HP
+            return this.getProperty(`propulsion/engine[${engineIndex}]/maxhp`) ||
+                this.getProperty(`propulsion/engine[${engineIndex}]/max-hp`) ||
+                0;
+        }
+        catch (e) {
+            return 0;
+        }
+    }
+    /**
+     * Get engine fuel flow (lbs/hr)
+     */
+    getEngineFuelFlow(engineIndex) {
+        try {
+            // Try both possible fuel flow property names
+            return this.getProperty(`propulsion/engine[${engineIndex}]/fuel-flow-rate-pps`) * 3600 || // pps to pph
+                this.getProperty(`propulsion/engine[${engineIndex}]/fuel-flow-rate-gph`) * 6.01 || // gph to lbs/hr (approx)
+                0;
+        }
+        catch (e) {
+            return 0;
+        }
+    }
+    /**
+     * Get engine temperature (if available)
+     */
+    getEngineTemperature(engineIndex) {
+        try {
+            // Try different temperature properties that might be available
+            return this.getProperty(`propulsion/engine[${engineIndex}]/egt-degf`) ||
+                this.getProperty(`propulsion/engine[${engineIndex}]/cht-degf`) ||
+                this.getProperty(`propulsion/engine[${engineIndex}]/oil-temperature-degf`) ||
+                0;
+        }
+        catch (e) {
+            return 0;
+        }
+    }
+    /**
+     * Get engine manifold pressure (for piston engines)
+     */
+    getEngineManifoldPressure(engineIndex) {
+        try {
+            return this.getProperty(`propulsion/engine[${engineIndex}]/map-inhg`);
+        }
+        catch (e) {
+            return 0;
+        }
+    }
+    /**
+     * Get engine N1 (for turbine engines)
+     */
+    getEngineN1(engineIndex) {
+        try {
+            return this.getProperty(`propulsion/engine[${engineIndex}]/n1`);
+        }
+        catch (e) {
+            return 0;
+        }
+    }
+    /**
+     * Get engine N2 (for turbine engines)
+     */
+    getEngineN2(engineIndex) {
+        try {
+            return this.getProperty(`propulsion/engine[${engineIndex}]/n2`);
+        }
+        catch (e) {
+            return 0;
+        }
+    }
+    /**
+     * Get engine type string
+     */
+    getEngineType(engineIndex) {
+        try {
+            // Try to determine engine type from available properties
+            try {
+                const mp = this.getProperty(`propulsion/engine[${engineIndex}]/map-inhg`);
+                if (mp !== undefined && mp !== null) {
+                    return "Piston";
+                }
+            }
+            catch (e) { }
+            try {
+                const n1 = this.getProperty(`propulsion/engine[${engineIndex}]/n1`);
+                if (n1 !== undefined && n1 !== null) {
+                    return "Turbine";
+                }
+            }
+            catch (e) { }
+            try {
+                const rpm = this.getProperty(`propulsion/engine[${engineIndex}]/engine-rpm`);
+                if (rpm !== undefined && rpm !== null) {
+                    return "Engine";
+                }
+            }
+            catch (e) { }
+            return "Unknown";
+        }
+        catch (e) {
+            return "Unknown";
+        }
+    }
+    /**
+     * Debug method to list all available engine properties
+     */
+    getEnginePropertyList(engineIndex) {
+        const properties = [];
+        const commonProps = [
+            'engine-rpm', 'power-hp', 'thrust-lbs', 'fuel-flow-rate-pps', 'fuel-flow-rate-gph',
+            'set-running', 'starter-norm', 'map-inhg', 'n1', 'n2', 'egt-degF',
+            'cht-degF', 'oil-temperature-degF', 'oil-pressure-psi', 'bsfc-lbs_hphr'
+        ];
+        for (const prop of commonProps) {
+            try {
+                const value = this.getProperty(`propulsion/engine[${engineIndex}]/${prop}`);
+                if (value !== undefined && value !== null) {
+                    properties.push(`${prop}: ${value}`);
+                }
+            }
+            catch (e) {
+                // Property doesn't exist
+            }
+        }
+        return properties;
     }
     // ========================================================================
     // Landing Gear and Ground Contact Methods

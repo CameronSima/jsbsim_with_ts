@@ -378,13 +378,57 @@ export declare class JSBSim {
      */
     setEngineRunning(engineIndex: number, running: boolean): void;
     /**
-     * Start all engines
+     * Set engine starter
+     */
+    setEngineStarter(engineIndex: number, active: boolean): void;
+    /**
+     * Start all engines with proper procedure
      */
     startAllEngines(): void;
     /**
      * Stop all engines
      */
     stopAllEngines(): void;
+    /**
+     * Get engine RPM
+     */
+    getEngineRPM(engineIndex: number): number;
+    /**
+     * Get engine power (HP)
+     */
+    getEnginePowerHP(engineIndex: number): number;
+    /**
+     * Get engine maximum power (HP)
+     */
+    getEngineMaxPowerHP(engineIndex: number): number;
+    /**
+     * Get engine fuel flow (lbs/hr)
+     */
+    getEngineFuelFlow(engineIndex: number): number;
+    /**
+     * Get engine temperature (if available)
+     */
+    getEngineTemperature(engineIndex: number): number;
+    /**
+     * Get engine manifold pressure (for piston engines)
+     */
+    getEngineManifoldPressure(engineIndex: number): number;
+    /**
+     * Get engine N1 (for turbine engines)
+     */
+    getEngineN1(engineIndex: number): number;
+    /**
+     * Get engine N2 (for turbine engines)
+     */
+    getEngineN2(engineIndex: number): number;
+    /**
+     * Get engine type string
+     */
+    getEngineType(engineIndex: number): string;
+    /**
+     * Debug method to list all available engine properties
+     */
+    getEnginePropertyList(engineIndex: number): string[];
     /**
      * Get weight on wheels status
      */
