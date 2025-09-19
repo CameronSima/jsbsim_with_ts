@@ -1,0 +1,105 @@
+# Simplified workflow for CDN deployment via GitHub Pages
+name: Deploy to CDN (GitHub Pages)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'typescript/**'
+      - '.github/workflows/deploy-cdn.yml'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Emscripten
+      uses: mymindstorm/setup-emsdk@v14
+      with:
+        version: 3.1.46
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+
+    - name: Build WASM
+      run: |
+        cd typescript
+        npm ci
+        npm run build:wasm
+        npm run build:dev
+
+    - name: Prepare CDN files
+      run: |
+        mkdir -p cdn
+
+        # Copy WASM files
+        cp typescript/dist/jsbsim.* cdn/
+
+        # Create CDN info file
+        cat > cdn/cdn-usage.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>JSBSim CDN</title>
+        </head>
+        <body>
+            <h1>JSBSim WebAssembly CDN</h1>
+            <p>Use these files in your project:</p>
+            <pre>
+https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/jsbsim.js
+https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/jsbsim.wasm
+https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/jsbsim.data
+https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/jsbsim.bundle.js
+            </pre>
+
+            <h2>Usage Example:</h2>
+            <pre>&lt;script type="module"&gt;
+  import JSBSimModule from 'https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/jsbsim.js';
+  window.JSBSimModule = JSBSimModule;
+&lt;/script&gt;
+&lt;script src="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/jsbsim.bundle.js"&gt;&lt;/script&gt;</pre>
+        </body>
+        </html>
+        EOF
+
+        # Create CORS headers file for GitHub Pages
+        cat > cdn/_headers << 'EOF'
+        /*
+          Access-Control-Allow-Origin: *
+          Access-Control-Allow-Methods: GET, OPTIONS
+          Cross-Origin-Embedder-Policy: require-corp
+          Cross-Origin-Opener-Policy: same-origin
+        EOF
+
+        mv cdn/cdn-usage.html cdn/index.html
+
+    - name: Upload to GitHub Pages
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: cdn
+
+    - name: Deploy to GitHub Pages
+      uses: actions/deploy-pages@v2
+      id: deployment
+
+    - name: Output CDN URLs
+      run: |
+        echo "## 🚀 CDN Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Your JSBSim WASM files are now available at:" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- [jsbsim.js](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/jsbsim.js)" >> $GITHUB_STEP_SUMMARY
+        echo "- [jsbsim.wasm](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/jsbsim.wasm)" >> $GITHUB_STEP_SUMMARY
+        echo "- [jsbsim.data](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/jsbsim.data)" >> $GITHUB_STEP_SUMMARY
+        echo "- [jsbsim.bundle.js](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/jsbsim.bundle.js)" >> $GITHUB_STEP_SUMMARY
